@@ -16,17 +16,17 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 
 
-app.get('/', 
+app.get('/',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -37,7 +37,7 @@ app.get('/links',
     });
 });
 
-app.post('/links', 
+app.post('/links',
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
@@ -76,7 +76,43 @@ app.post('/links',
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.post('/login',
+(req, res, next) => {
+  // Check the database for the username
+  models.Users.get({username: req.body.username})
+  .then(result => {
+    // authenticate the password
+    return models.Users.compare(req.body.password, result.password, result.salt)
+  })
+  .then(result => {
+    if(result === true) {
+      models.Sessions.create();
+    } else {
+      res.redirect('/login');
+    }
+  })
+  .then(result => {
+    res.status(200).redirect('/');
+  })
+  .catch(error => {
+    res.redirect('/login');
+  })
+  // redirect to the home page
 
+});
+
+app.post('/signup',
+(req, res, next) => {
+  // call User.create with the username and password
+  // redirect to signup if the user already exists
+  models.Users.create(req.body)
+  .then(ifCreated => {
+      res.status(200).redirect('/');
+  })
+  .error(error => {
+    res.status(500).redirect('/signup');
+  });
+});
 
 
 /************************************************************/
