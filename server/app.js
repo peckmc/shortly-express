@@ -98,7 +98,6 @@ app.post('/login',
     res.redirect('/login');
   })
   // redirect to the home page
-
 });
 
 app.post('/signup',
