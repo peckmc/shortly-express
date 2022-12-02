@@ -16,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(CookieParser);
 app.use(Auth.createSession);
+// app.use('some path', verifySession)
 
 
 app.get('/',
@@ -87,10 +88,14 @@ app.post('/login',
     return models.Users.compare(req.body.password, result.password, result.salt)
   })
   .then(result => {
-    if(result === true) {
-      models.Sessions.create();
-    } else {
+    if(result !== true) {
       res.redirect('/login');
+    } else {
+      models.Sessions.update({hash: req.session.hash}, {userId: result.id})
+      .then(ok => {
+        console.log('Login successful');
+        res.redirect('/');
+      });
     }
   })
   .then(result => {
@@ -106,13 +111,31 @@ app.post('/signup',
 (req, res, next) => {
   // call User.create with the username and password
   // redirect to signup if the user already exists
-  models.Users.create(req.body)
-  .then(ifCreated => {
-      res.status(200).redirect('/');
-  })
-  .error(error => {
-    res.status(500).redirect('/signup');
-  });
+  models.Users.get({username: req.body.username})
+  .then(userSigned => {
+    if (userSigned) {
+      console.log('user has signed')
+      res.status(500).redirect('/signup');
+    } else {
+      models.Users.create(req.body)
+      .then(userCreated => {
+
+        models.Sessions.update({hash: req.session.hash}, {userId: userCreated.id})
+      .then(ok => {
+        console.log('Signed successful');
+        res.status(200).redirect('/');
+      });
+      })
+      .error(error => {
+        console.log('Signed fail');
+        res.status(500).redirect('/signup');
+      });
+
+    }
+  }
+
+  )
+
 });
 
 

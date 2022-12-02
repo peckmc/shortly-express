@@ -23,12 +23,13 @@ module.exports.createSession = (req, res, next) => {
       })
     } else {
       // if the cookie is not valid, generate a new hash and session object
+      // get the user info for the new login
       models.Sessions.create()
       .then(result => {
         return models.Sessions.get({id : result.insertId})
       })
       .then(result => {
-        req.session = {hash: result.hash}
+        req.session = {hash: result.hash, 'user': {'username': req.body.username}}
         res.cookie('shortlyid', result.hash);
         next();
       })
@@ -37,3 +38,19 @@ module.exports.createSession = (req, res, next) => {
       })
     }})
 };
+
+/************************************************************/
+// Add additional authentication middleware functions below
+/************************************************************/
+
+module.exports.verifySession = (req, res, next) => {
+  var parsedCookies = req.cookies;
+  models.Sessions.get({hash: parsedCookies.shortlyid})
+  .then(result => {
+    if(result) {
+      return true;
+    } else {
+      return false;
+    }
+  })
+}
