@@ -44,20 +44,6 @@ class Users extends Model {
 
     return super.create.call(this, newUser);
   }
-
-  // get(options) {
-  //   return models.Users.get(options);
-  // }
-
-
-  // get(options) {
-  //   let parsedOptions = parseData(options);
-  //   let queryString = `SELECT * FROM ${this.tablename} WHERE ${parsedOptions.string.join(' AND ')} LIMIT 1`;
-  //   return executeQuery(queryString, parsedOptions.values).then(results => results[0]);
-  // }
-  // const executeQuery = (query, values) => {
-  //   return db.queryAsync(query, values).spread(results => results);
-  // };
 }
 
 module.exports = new Users();

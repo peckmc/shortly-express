@@ -37,4 +37,3 @@ module.exports.createSession = (req, res, next) => {
       })
     }})
 };
-
