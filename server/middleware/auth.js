@@ -42,15 +42,3 @@ module.exports.createSession = (req, res, next) => {
 /************************************************************/
 // Add additional authentication middleware functions below
 /************************************************************/
-
-module.exports.verifySession = (req, res, next) => {
-  var parsedCookies = req.cookies;
-  models.Sessions.get({hash: parsedCookies.shortlyid})
-  .then(result => {
-    if(result) {
-      return true;
-    } else {
-      return false;
-    }
-  })
-}

@@ -16,28 +16,63 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(CookieParser);
 app.use(Auth.createSession);
-// app.use('some path', verifySession)
+
+
+app.get('/login',
+  (req, res) => {
+    res.render('login');
+  }
+);
 
 
 app.get('/',
 (req, res) => {
-  res.render('index');
-});
+  if (models.Sessions.isLoggedIn(req.session)) {
+    res.render('index');
+  } else {
+    return models.Sessions.delete({hash:req.session.hash})
+    .then(ok => {
+      res.redirect('/login');
+    })
+    .catch( err => {
+      console.log('create link failed');
+    });
+}});
 
 app.get('/create',
 (req, res) => {
-  res.render('index');
+  if (models.Sessions.isLoggedIn(req.session)) {
+    res.render('index');
+  } else {
+    return models.Sessions.delete({hash:req.session.hash})
+    .then(ok => {
+      res.redirect('/login');
+    })
+    .catch( err => {
+      console.log('create link failed');
+    });
+  }
 });
 
 app.get('/links',
 (req, res, next) => {
-  models.Links.getAll()
-    .then(links => {
-      res.status(200).send(links);
-    })
-    .error(error => {
-      res.status(500).send(error);
-    });
+   if (models.Sessions.isLoggedIn(req.session)) {
+      models.Links.getAll()
+      .then(links => {
+        res.status(200).send(links);
+      })
+      .error(error => {
+        res.status(500).send(error);
+      });
+   } else {
+      return models.Sessions.delete({hash:req.session.hash})
+      .then(ok => {
+        res.redirect('/login');
+      })
+      .catch( err => {
+        console.log('create link failed');
+      });
+   }
 });
 
 app.post('/links',
@@ -81,60 +116,69 @@ app.post('/links',
 /************************************************************/
 app.post('/login',
 (req, res, next) => {
-  // Check the database for the username
-  models.Users.get({username: req.body.username})
-  .then(result => {
-    // authenticate the password
-    return models.Users.compare(req.body.password, result.password, result.salt)
-  })
-  .then(result => {
-    if(result !== true) {
-      res.redirect('/login');
-    } else {
-      models.Sessions.update({hash: req.session.hash}, {userId: result.id})
-      .then(ok => {
-        console.log('Login successful');
-        res.redirect('/');
+
+
+    models.Users.get({username: req.body.username})
+      .then(user => {
+        if (!user) {
+          res.redirect('/login');
+        } else {
+          var hashedpw = user.password;
+          var salt = user.salt;
+          var bool = models.Users.compare(req.body.password, hashedpw, salt);
+          if (bool) {
+
+            var hash = req.session.hash;
+            models.Sessions.update({hash: req.session.hash}, {userId: user.id})
+              .then(ok => {
+                console.log('Login successful');
+                res.redirect('/');
+              });
+          } else {
+            res.redirect('/login');
+          }
+        }
+      })
+      .catch( err => {
+        console.log('Error');
       });
-    }
-  })
-  .then(result => {
-    res.status(200).redirect('/');
-  })
-  .catch(error => {
-    res.redirect('/login');
-  })
   // redirect to the home page
 });
 
 app.post('/signup',
 (req, res, next) => {
-  // call User.create with the username and password
-  // redirect to signup if the user already exists
+
   models.Users.get({username: req.body.username})
-  .then(userSigned => {
-    if (userSigned) {
-      console.log('user has signed')
-      res.status(500).redirect('/signup');
-    } else {
-      models.Users.create(req.body)
-      .then(userCreated => {
+    .then(user => {
+      if (user) {
+        res.redirect('/signup');
+      } else {
+        return models.Users.create(req.body)
+          .then( user => {
+            var id = user.insertId;
+            var hash = req.session.hash;
+            models.Sessions.update({hash: hash}, {userId: id})
+              .then(ok => {
+                res.redirect('/');
+              });
+          })
+          .catch( err => {
+            console.log('Signup failed');
+          });
+      }
+    });
+});
 
-        models.Sessions.update({hash: req.session.hash}, {userId: userCreated.id})
-      .then(ok => {
-        console.log('Signed successful');
-        res.status(200).redirect('/');
-      });
-      })
-      .error(error => {
-        console.log('Signed fail');
-        res.status(500).redirect('/signup');
-      });
-
-    }
-  }
-
-  )
+app.get('/logout',
+(req, res, next) => {
+  return models.Sessions.delete({hash:req.session.hash})
+  .then(ok => {
+    res.clearCookie('shortlyId');
+    res.redirect('/');
+  })
+  .catch( err => {
+    console.log('log out failed');
+  });
 
 });
 
@@ -168,5 +212,10 @@ app.get('/:code', (req, res, next) => {
       res.redirect('/');
     });
 });
+
+/************************************************************/
+// write you logout here
+/************************************************************/
+
 
 module.exports = app;
